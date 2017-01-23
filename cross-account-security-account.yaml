@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  This template is used for providing a Switch Roles Access in Security Account.
+
+Parameters:
+  ClientAccountNumber:
+    AllowedPattern: '[0-9]+'
+    Description: The 12 digit AWS account number which granted access for security account.
+    MaxLength: '12'
+    MinLength: '12'
+    Type: String
+
+  ClientName:
+    Description: ClientName
+    MinLength: '1'
+    Type: String
+
+  ProjectName:
+    Description: ProjectName
+    MinLength: '1'
+    Type: String
+
+  Environment:
+    Description: Environment
+    AllowedValues: [PRODUCTION, STAGING, DEV, UAT]
+    Type: String
+
+  GrantedAdminAccess:
+    Description: Select if Admin access is provided
+    Default: yes
+    Type: String
+    AllowedValues: [yes, no]
+    ConstraintDescription: must specify yes or no
+
+  GrantedPowerAccess:
+    Description: Select if Power access is provided
+    Default: yes
+    Type: String
+    AllowedValues: [yes, no]
+    ConstraintDescription: must specify yes or no
+
+  GrantedReadAccess:
+    Description: Select if Read access is provided
+    Default: yes
+    Type: String
+    AllowedValues: [yes, no]
+    ConstraintDescription: must specify yes or no
+
+Conditions:
+  CreateAdminResources: !Equals [!Ref GrantedAdminAccess, yes]
+  CreatePowerResources: !Equals [!Ref GrantedPowerAccess, yes]
+  CreateReadonlyResources: !Equals [!Ref GrantedReadAccess, yes]
+
+Resources:
+  AdminsPolicy:
+    Type: "AWS::IAM::Policy"
+    Condition: CreateAdminResources
+    Properties:
+      PolicyName: !Sub PolicyToSwitchRole-${ClientName}-${ProjectName}-${Environment}-Admins
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Action: 'sts:AssumeRole'
+          Resource: !Join [ "", [ 'arn:aws:iam::' , !Ref 'ClientAccountNumber' , ':role/Security-AdminRole' ] ]
+      Groups:
+        -
+          !Ref AdminsGroup
+
+  AdminsGroup:
+      Type: "AWS::IAM::Group"
+      Condition: CreateAdminResources
+      Properties:
+        GroupName: !Sub ${ClientName}-${ProjectName}-${Environment}-Admins
+
+
+  PowersPolicy:
+    Type: "AWS::IAM::Policy"
+    Condition: CreatePowerResources
+    Properties:
+      PolicyName: !Sub PolicyToSwitchRole-${ClientName}-${ProjectName}-${Environment}-Powers
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Action: 'sts:AssumeRole'
+          Resource: !Join [ "", [ 'arn:aws:iam::' , !Ref 'ClientAccountNumber' , ':role/Security-PowerRole' ] ]
+      Groups:
+        -
+          !Ref PowersGroup
+
+  PowersGroup:
+      Type: "AWS::IAM::Group"
+      Condition: CreatePowerResources
+      Properties:
+        GroupName: !Sub ${ClientName}-${ProjectName}-${Environment}-Powers
+
+
+  ReadonlyPolicy:
+    Type: "AWS::IAM::Policy"
+    Condition: CreateReadonlyResources
+    Properties:
+      PolicyName: !Sub PolicyToSwitchRole-${ClientName}-${ProjectName}-${Environment}-Readonly
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Action: 'sts:AssumeRole'
+          Resource: !Join [ "", [ 'arn:aws:iam::' , !Ref 'ClientAccountNumber' , ':role/Security-ReadonlyRole' ] ]
+      Groups:
+        -
+          !Ref ReadonlyGroup
+
+  ReadonlyGroup:
+      Type: "AWS::IAM::Group"
+      Condition: CreateReadonlyResources
+      Properties:
+        GroupName: !Sub ${ClientName}-${ProjectName}-${Environment}-Readonly
